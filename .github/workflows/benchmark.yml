@@ -196,4 +196,5 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
       - name: Record the results page
-        run: echo "Results page: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Results page: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
