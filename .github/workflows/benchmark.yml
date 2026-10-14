@@ -1,0 +1,94 @@
+name: Scroll benchmarks
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      rows:
+        description: "Comma-separated row counts (1,000–100,000,000 each)"
+        default: "100000,1000000,100000000"
+        type: string
+      browsers:
+        description: "chromium, firefox, webkit or comma-separated combination"
+        default: chromium
+        type: string
+      suite:
+        description: "Measurement suite (memory requires Chromium only)"
+        default: all
+        type: choice
+        options: [all, performance, memory]
+      repeats:
+        description: "Passes per library and row count (1–20)"
+        default: "3"
+        type: string
+      libraries:
+        description: "all or comma-separated window,tanstack,scaled,ag,virtuoso,virtua,rc,vit (or adapter IDs such as tanstack-scaled)"
+        default: all
+        type: string
+      profile:
+        description: "Library setups: default, best-effort, or all (both)"
+        default: all
+        type: choice
+        options: [all, default, best-effort]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scroll-bench-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: ${{ matrix.row_mode }} row heights
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        row_mode: [fixed, dynamic]
+    env:
+      BENCH_ROWS: ${{ inputs.rows || '100000' }}
+      BENCH_BROWSERS: ${{ inputs.browsers || 'chromium' }}
+      BENCH_SUITE: ${{ inputs.suite || 'performance' }}
+      BENCH_REPEATS: ${{ inputs.repeats || '1' }}
+      BENCH_LIBRARIES: ${{ inputs.libraries || 'all' }}
+      BENCH_PROFILE: ${{ inputs.profile || 'all' }}
+      BENCH_ROW_MODE: ${{ matrix.row_mode }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: Install browser builds and Linux dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run isolated benchmarks
+        run: >-
+          npm run bench --
+          --browser "$BENCH_BROWSERS"
+          --suite "$BENCH_SUITE"
+          --rows "$BENCH_ROWS"
+          --row-mode "$BENCH_ROW_MODE"
+          --repeats "$BENCH_REPEATS"
+          --library "$BENCH_LIBRARIES"
+          --profile "$BENCH_PROFILE"
+          --no-publish
+      - name: Write results to job summary
+        if: always()
+        run: node scripts/bench-ci-summary.mjs
+      - name: Upload full reports and partial observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scroll-bench-${{ matrix.row_mode }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/bench/*/report.html
+            output/bench/*/*.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f5f1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta
+      name="description"
+      content="Published virtual-scrolling benchmark results for seven React libraries, recorded in fresh browser processes."
+    />
+    <title>ScrollBench — React virtual-scrolling benchmarks</title>
+    <script>
+      // Results are the home page; the demo moved to demo.html. Keep old links
+      // working: demo anchors, full-screen tables and fixtures go to the demo,
+      // and the old /?page=benchmarks view drops its now-redundant parameter.
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var hash = location.hash === "#features" ? "#libraries" : location.hash;
+        if (
+          params.has("table") ||
+          params.has("audit") ||
+          /^#(demo|libraries|playground|benchmark-lite|method)$/.test(hash)
+        ) {
+          location.replace("demo.html" + location.search + hash);
+          return;
+        }
+        if (params.get("page") !== "benchmarks") return;
+        params.delete("page");
+        var query = params.toString();
+        history.replaceState(null, "", location.pathname + (query ? "?" + query : "") + location.hash);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/benchmarks.jsx"></script>
+  </body>
+</html>
