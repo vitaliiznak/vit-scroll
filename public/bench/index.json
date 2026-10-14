@@ -1,7 +1,99 @@
 {
   "schema": "vit-scroll-bench/1",
-  "updatedAt": "2026-10-14T03:34:37.223Z",
+  "updatedAt": "2026-10-14T03:40:03.575Z",
   "runs": [
+    {
+      "id": "2026-10-14T03-39-12.639Z-performance",
+      "file": "runs/2026-10-14T03-39-12.639Z-performance.json",
+      "suite": "performance",
+      "rowMode": "fixed",
+      "profile": "all",
+      "execution": {
+        "kind": "ci",
+        "provider": "github-actions",
+        "runnerEnvironment": "github-hosted",
+        "runnerOS": "Linux",
+        "runnerArch": "X64",
+        "imageOS": "ubuntu24",
+        "imageVersion": "20261004.327.1",
+        "workflow": "Scroll benchmarks",
+        "job": "benchmark",
+        "repository": "vitaliiznak/vit-scroll",
+        "serverUrl": "https://github.com",
+        "runId": "38507261255",
+        "runAttempt": "1",
+        "event": "push",
+        "ref": "refs/heads/master",
+        "commit": "d2fe8c1de295725f7d28ecfd710adf542ab91a94"
+      },
+      "startedAt": "2026-10-14T03:39:12.640Z",
+      "complete": true,
+      "browsers": [
+        "chromium"
+      ],
+      "counts": [
+        100000
+      ],
+      "engines": [
+        "window",
+        "tanstack",
+        "tanstack-scaled",
+        "scaled",
+        "ag",
+        "virtuoso",
+        "virtua",
+        "rc",
+        "vit"
+      ],
+      "repetitions": 1,
+      "cases": 9
+    },
+    {
+      "id": "2026-10-14T03-39-10.975Z-performance",
+      "file": "runs/2026-10-14T03-39-10.975Z-performance.json",
+      "suite": "performance",
+      "rowMode": "dynamic",
+      "profile": "all",
+      "execution": {
+        "kind": "ci",
+        "provider": "github-actions",
+        "runnerEnvironment": "github-hosted",
+        "runnerOS": "Linux",
+        "runnerArch": "X64",
+        "imageOS": "ubuntu24",
+        "imageVersion": "20261004.327.1",
+        "workflow": "Scroll benchmarks",
+        "job": "benchmark",
+        "repository": "vitaliiznak/vit-scroll",
+        "serverUrl": "https://github.com",
+        "runId": "38507261255",
+        "runAttempt": "1",
+        "event": "push",
+        "ref": "refs/heads/master",
+        "commit": "d2fe8c1de295725f7d28ecfd710adf542ab91a94"
+      },
+      "startedAt": "2026-10-14T03:39:10.976Z",
+      "complete": true,
+      "browsers": [
+        "chromium"
+      ],
+      "counts": [
+        100000
+      ],
+      "engines": [
+        "window",
+        "tanstack",
+        "tanstack-scaled",
+        "scaled",
+        "ag",
+        "virtuoso",
+        "virtua",
+        "rc",
+        "vit"
+      ],
+      "repetitions": 1,
+      "cases": 9
+    },
     {
       "id": "2026-10-14T02-58-51.302Z-performance",
       "file": "runs/2026-10-14T02-58-51.302Z-performance.json",
