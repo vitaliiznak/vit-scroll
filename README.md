@@ -76,7 +76,7 @@ Each run records whether it ran locally or in CI, plus CPU, cores, RAM, OS, Node
 
 ## CI
 
-`.github/workflows/benchmark.yml` runs on pull requests and pushes to `main`/`master`: two Ubuntu jobs (fixed and dynamic heights), Chromium, all libraries, 100K rows, one pass, after the unit tests. **Run workflow** defaults to 100K, 1M and 100M rows, all suites and three passes. Each job writes a results table to the job summary and uploads `report.html` plus raw JSON. A green job means the benchmark ran, **not** that every library passed. To show a CI run on the results page, extract its artifact and run `npm run bench:publish -- <folder>`, then `npm run build`.
+`.github/workflows/benchmark.yml` runs on pull requests and pushes to `main`/`master`: two Ubuntu jobs (fixed and dynamic heights), Chromium, all libraries, 100K rows, one pass, after the unit tests. **Run workflow** defaults to 100K, 1M and 100M rows, all suites and three passes. Each job writes a results table to the job summary and uploads `report.html` plus raw JSON. A green job means the benchmark ran, **not** that every library passed. When that workflow finishes on `master` or `main` (a push or a manual run), it commits `public/bench/` and deploys GitHub Pages. Pull requests keep their reports as workflow artifacts. `npm run dev` shows the committed runs after a pull.
 
 ## Demo
 

@@ -11,7 +11,7 @@ import {
   summarizeRun,
   updateManifest,
 } from "../src/bench-results.mjs";
-import { publishRun } from "../scripts/bench-publish.mjs";
+import { findRunDirs, publishRun } from "../scripts/bench-publish.mjs";
 import { explainError } from "../src/measurements.mjs";
 import { MEASURES, describe } from "../src/bench-glossary.mjs";
 
@@ -193,6 +193,56 @@ test("published runs report completeness and the manifest stays newest-first", (
       .dropped,
     ["runs/old.json"],
   );
+});
+
+test("findRunDirs publishes every nested artifact and ignores other JSON", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "bench-artifacts-"));
+  const publicDir = fs.mkdtempSync(path.join(os.tmpdir(), "bench-public-"));
+  try {
+    const write = (folder, id) => {
+      const dir = path.join(root, folder, id);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "run.json"),
+        JSON.stringify({
+          startedAt: `2026-10-13T1${id.length}:00:00Z`,
+          options: {
+            browsers: ["chromium"],
+            suite: "performance",
+            engines: ["vit"],
+            counts: [1000],
+            repetitions: 1,
+          },
+        }),
+      );
+      fs.writeFileSync(
+        path.join(dir, "chromium-performance.json"),
+        JSON.stringify({
+          completedAt: "2026-10-13T10:01:00Z",
+          config: { suite: "performance" },
+          cases: [rawCase("vit", 0)],
+        }),
+      );
+      fs.mkdirSync(path.join(dir, "site"), { recursive: true });
+      fs.writeFileSync(path.join(dir, "site", "chromium-performance.json"), "{}");
+    };
+    write("fixed/output/bench", "2026-10-13T10-00-00Z");
+    write("dynamic/output/bench", "2026-10-13T11-00-00Z");
+    fs.mkdirSync(path.join(root, "notes"), { recursive: true });
+    fs.writeFileSync(path.join(root, "notes", "index.json"), "{}");
+    const dirs = findRunDirs(root);
+    assert.equal(dirs.length, 2);
+    for (const dir of dirs) publishRun(dir, { publicDir });
+    const index = JSON.parse(fs.readFileSync(path.join(publicDir, "index.json"), "utf8"));
+    assert.equal(index.runs.length, 2);
+    assert.deepEqual(
+      index.runs.map((run) => run.id).sort(),
+      dirs.map((dir) => `${path.basename(dir)}-performance`).sort(),
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(publicDir, { recursive: true, force: true });
+  }
 });
 
 test("publishRun turns an output/bench directory into page data", () => {

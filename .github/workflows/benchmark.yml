@@ -24,7 +24,7 @@ on:
         default: "3"
         type: string
       libraries:
-        description: "all or comma-separated window,tanstack,scaled,ag,virtuoso,virtua,rc,vit (or adapter IDs such as tanstack-scaled)"
+        description: "all or comma-separated window,tanstack,scaled,ag,virtuoso,virtua,rc,vit (or config IDs such as tanstack-scaled, ag-client)"
         default: all
         type: string
       profile:
@@ -92,3 +92,108 @@ jobs:
             output/bench/*/*.json
           if-no-files-found: warn
           retention-days: 30
+
+  # A token push does not start Deploy GitHub Pages, so this workflow deploys
+  # the committed results itself. Pull requests stay as artifacts.
+  publish:
+    name: Store results
+    needs: benchmark
+    if: >-
+      always() &&
+      (needs.benchmark.result == 'success' || needs.benchmark.result == 'failure') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: write
+      pages: write
+      id-token: write
+    outputs:
+      pushed: ${{ steps.commit.outputs.pushed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Download benchmark artifacts
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: scroll-bench-*
+          path: bench-artifacts
+      - name: Publish results into public/bench
+        if: steps.download.outcome == 'success'
+        run: npm run bench:publish -- --scan bench-artifacts
+      - name: Commit and push results
+        id: commit
+        run: |
+          set -euo pipefail
+          git add public/bench
+          if git diff --cached --quiet; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          commit_results() {
+            git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Publish benchmark results from run ${GITHUB_RUN_ID}."
+          }
+          commit_results
+          branch="${GITHUB_REF_NAME}"
+          for _ in 1 2 3; do
+            if git push origin "HEAD:${branch}"; then
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git fetch origin "${branch}"
+            git reset --hard "origin/${branch}"
+            npm run bench:publish -- --scan bench-artifacts
+            git add public/bench
+            commit_results
+          done
+          echo "Could not push published results" >&2
+          exit 1
+      - name: Build site
+        if: steps.commit.outputs.pushed == 'true'
+        run: npm run build
+        env:
+          GITHUB_PAGES: "true"
+      - name: Upload site
+        if: steps.commit.outputs.pushed == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+      - name: Record where the results went
+        if: steps.commit.outputs.pushed == 'true'
+        run: |
+          {
+            echo "Committed \`public/bench/\` to \`${{ github.ref_name }}\`."
+            echo "GitHub Pages deploy follows. A pull shows the same runs locally."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy results page
+    needs: publish
+    if: needs.publish.outputs.pushed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Record the results page
+        run: echo "Results page: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"

@@ -6,10 +6,35 @@ import { buildPublishedRun, updateManifest } from "../src/bench-results.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 export const PUBLIC_BENCH = path.join(root, "public/bench");
 
+const isBrowserReport = (name) => /^(chromium|firefox|webkit)-\w+\.json$/.test(name);
+
+// Artifact downloads nest each run directory. A directory is one run when it
+// holds the browser JSON; its build output is not searched.
+export function findRunDirs(root) {
+  const found = [];
+  const visit = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    if (entries.some((entry) => entry.isFile() && isBrowserReport(entry.name))) {
+      found.push(dir);
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) visit(path.join(dir, entry.name));
+    }
+  };
+  if (root && fs.existsSync(root)) visit(root);
+  return found.sort();
+}
+
 export function readRun(dir) {
   const files = fs
     .readdirSync(dir)
-    .filter((f) => /^(chromium|firefox|webkit)-\w+\.json$/.test(f));
+    .filter((f) => isBrowserReport(f));
   if (!files.length) throw new Error(`No benchmark JSON in ${dir}`);
   const metaFile = path.join(dir, "run.json");
   const meta = fs.existsSync(metaFile)
@@ -49,15 +74,21 @@ export function publishRun(dir, { publicDir = PUBLIC_BENCH } = {}) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const dirs = process.argv.slice(2);
-  if (!dirs.length || dirs.includes("--help")) {
-    console.log(
-      "Usage: npm run bench:publish -- output/bench/<timestamp> [...more]\nWrites public/bench/runs/<id>.json and public/bench/index.json for the results home page (/).",
-    );
+  const args = process.argv.slice(2);
+  const usage =
+    "Usage: npm run bench:publish -- output/bench/<timestamp> [...more]\n       npm run bench:publish -- --scan <directory>\nWrites public/bench/runs/<id>.json and public/bench/index.json for the results home page (/).";
+  if (!args.length || args.includes("--help")) {
+    console.log(usage);
   } else {
     try {
+      const dirs =
+        args[0] === "--scan"
+          ? findRunDirs(path.resolve(args[1] ?? ""))
+          : args.map((dir) => path.resolve(dir));
+      if (args[0] === "--scan" && !args[1]) throw new Error(usage);
+      if (!dirs.length) console.log("No benchmark JSON to publish.");
       for (const dir of dirs) {
-        const run = publishRun(path.resolve(dir));
+        const run = publishRun(dir);
         console.log(
           `Published ${run.id}: ${run.cases.length} cases${run.complete ? "" : " (partial)"}`,
         );
